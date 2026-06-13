@@ -1,11 +1,13 @@
-
 import { motion } from 'framer-motion';
 import type { GameOverCause } from '../types';
+import type { GameMode } from '../hooks/useGame';
 import { GAME_OVER_MESSAGES, RESOURCE_ICONS } from '../config/game-config';
+import { getDailyState } from '../lib/seeded-rng';
 
 interface Props {
   score: number;
   cause: GameOverCause;
+  mode: GameMode;
   onReset: () => void;
   onShare: () => void;
   onLeaderboard: () => void;
@@ -27,10 +29,20 @@ function getCauseLabel(cause: GameOverCause): string {
   return isZero ? 'Aktenkollaps' : 'Übertriebene Effizienz';
 }
 
-export default function GameOver({ score, cause, onReset, onShare, onLeaderboard, percentile = 50 }: Props) {
+export default function GameOver({
+  score,
+  cause,
+  mode,
+  onReset,
+  onShare,
+  onLeaderboard,
+  percentile = 50,
+}: Props) {
   const msg = GAME_OVER_MESSAGES[cause];
   const icon = getResourceFromCause(cause);
   const label = getCauseLabel(cause);
+  const { day, dateStr } = getDailyState();
+  const isDaily = mode === 'daily';
 
   return (
     <motion.div
@@ -39,10 +51,8 @@ export default function GameOver({ score, cause, onReset, onShare, onLeaderboard
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
     >
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-petrol/85 backdrop-blur-sm" />
 
-      {/* Certificate */}
       <motion.div
         className="relative w-full max-w-sm bg-cream rounded-2xl overflow-hidden shadow-2xl"
         initial={{ scale: 0.85, y: 40 }}
@@ -51,31 +61,33 @@ export default function GameOver({ score, cause, onReset, onShare, onLeaderboard
       >
         {/* Header */}
         <div className="bg-petrol px-6 py-5 text-center relative">
+          {isDaily && (
+            <div className="absolute top-3 right-4 bg-coral text-white text-xs font-bold px-2 py-0.5 rounded-full">
+              Akte des Tages #{day}
+            </div>
+          )}
           <p className="text-coral text-xs font-bold tracking-widest uppercase mb-1">
-            Behördlicher Bescheid
+            {isDaily ? `${dateStr} · Behördlicher Bescheid` : 'Behördlicher Bescheid'}
           </p>
           <h1 className="text-white font-serif text-2xl font-black leading-tight">
             AMT MUSTERHAUSEN
           </h1>
-          <p className="text-white/60 text-xs mt-1">Az.: MH-{String(score).padStart(4, '0')}</p>
+          <p className="text-white/50 text-xs mt-1">Az.: MH-{String(score).padStart(4, '0')}</p>
         </div>
 
-        {/* Content */}
-        <div className="px-6 pt-5 pb-4 text-center">
+        {/* Inhalt */}
+        <div className="px-6 pt-5 pb-4 text-center relative">
           <p className="text-petrol/50 text-xs font-bold tracking-widest uppercase mb-3">
             HIERMIT WIRD AMTLICH BESTÄTIGT:
           </p>
 
-          {/* Score */}
           <div className="mb-4">
             <div className="text-6xl font-serif font-black text-coral leading-none">{score}</div>
             <div className="text-petrol font-semibold text-lg">Akten überlebt</div>
           </div>
 
-          {/* Divider */}
           <div className="border-t border-dashed border-petrol/20 my-4" />
 
-          {/* Cause */}
           <div className="mb-4">
             <div className="flex items-center justify-center gap-2 mb-2">
               <span className="text-2xl">{icon}</span>
@@ -87,20 +99,19 @@ export default function GameOver({ score, cause, onReset, onShare, onLeaderboard
             <p className="text-petrol/70 text-sm leading-relaxed">{msg.text}</p>
           </div>
 
-          {/* Percentile */}
           <div className="bg-petrol/5 rounded-lg py-2 px-4 mb-4 text-sm text-petrol/60">
             Besser als <span className="font-bold text-petrol">{percentile}%</span> aller Amtsleiter
           </div>
 
-          {/* Stamp */}
-          <div className="absolute top-32 right-6 rotate-[-15deg] opacity-20 pointer-events-none">
-            <div className="border-4 border-red-600 rounded-lg px-3 py-1 text-red-600 font-serif font-black text-xl tracking-widest">
+          {/* Stempel-Wasserzeichen */}
+          <div className="absolute top-28 right-5 rotate-[-15deg] opacity-[0.08] pointer-events-none select-none">
+            <div className="border-4 border-red-600 rounded-lg px-3 py-1 text-red-600 font-serif font-black text-2xl tracking-widest">
               GAME OVER
             </div>
           </div>
         </div>
 
-        {/* Signature line */}
+        {/* Unterschriftslinie */}
         <div className="px-6 pb-2 flex justify-between items-end text-xs text-petrol/40">
           <div>
             <div className="border-t border-petrol/30 w-28 mb-1" />
@@ -109,7 +120,7 @@ export default function GameOver({ score, cause, onReset, onShare, onLeaderboard
           <span>{new Date().toLocaleDateString('de-DE')}</span>
         </div>
 
-        {/* Actions */}
+        {/* Aktionen */}
         <div className="px-4 pb-4 grid grid-cols-3 gap-2 mt-1">
           <button
             onClick={onLeaderboard}

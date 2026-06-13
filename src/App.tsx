@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useGame } from './hooks/useGame';
+import type { GameMode } from './hooks/useGame';
 import StartScreen from './components/StartScreen';
 import CityView from './components/CityView';
 import ResourceBar from './components/ResourceBar';
@@ -9,6 +10,7 @@ import SoundToggle from './components/SoundToggle';
 import Leaderboard from './components/Leaderboard';
 import ShareCard from './components/ShareCard';
 import { getPercentile } from './lib/supabase';
+import { getDailyState } from './lib/seeded-rng';
 
 export default function App() {
   const game = useGame();
@@ -16,8 +18,8 @@ export default function App() {
   const [showShare, setShowShare] = useState(false);
   const [percentile, setPercentile] = useState(50);
 
-  const handleShowLeaderboard = () => {
-    setShowLeaderboard(true);
+  const handleStart = (mode: GameMode) => {
+    game.startGame(mode);
   };
 
   const handleShowShare = async () => {
@@ -26,26 +28,33 @@ export default function App() {
     setShowShare(true);
   };
 
+  const { day } = getDailyState();
+
   if (game.gameState === 'start') {
-    return <StartScreen onStart={game.startGame} />;
+    return <StartScreen onStart={handleStart} />;
   }
 
   return (
     <div className="relative w-full h-dvh overflow-hidden bg-petrol">
-      {/* City background */}
       <CityView resources={game.resources} />
 
-      {/* Resource bars */}
       <ResourceBar resources={game.resources} />
 
-      {/* Score display */}
+      {/* Score-Anzeige */}
       {game.gameState === 'playing' && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 bg-black/30 backdrop-blur-sm rounded-full px-4 py-1 text-white/80 text-xs font-medium">
-          Akte #{game.score + 1}
+        <div className="absolute top-[52px] left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+          <div className="bg-black/30 backdrop-blur-sm rounded-full px-3 py-1 text-white/80 text-xs font-medium">
+            Akte #{game.score + 1}
+          </div>
+          {game.mode === 'daily' && (
+            <div className="bg-coral/80 backdrop-blur-sm rounded-full px-3 py-1 text-white text-xs font-bold">
+              📅 Tag #{day}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Card stack */}
+      {/* Karten-Stapel */}
       {game.gameState === 'playing' && game.currentCard && (
         <CardStack
           card={game.currentCard}
@@ -54,22 +63,21 @@ export default function App() {
         />
       )}
 
-      {/* Game over screen */}
+      {/* Game-Over-Screen */}
       {game.gameState === 'game_over' && game.cause && (
         <GameOver
           score={game.score}
           cause={game.cause}
+          mode={game.mode}
           onReset={game.resetGame}
           onShare={handleShowShare}
-          onLeaderboard={handleShowLeaderboard}
+          onLeaderboard={() => setShowLeaderboard(true)}
           percentile={percentile}
         />
       )}
 
-      {/* Sound toggle */}
       <SoundToggle />
 
-      {/* Leaderboard modal */}
       <Leaderboard
         isOpen={showLeaderboard}
         onClose={() => setShowLeaderboard(false)}
@@ -78,13 +86,13 @@ export default function App() {
         durationSeconds={game.getDurationSeconds()}
       />
 
-      {/* Share card modal */}
       {game.cause && (
         <ShareCard
           isOpen={showShare}
           onClose={() => setShowShare(false)}
           score={game.score}
           cause={game.cause}
+          mode={game.mode}
           percentile={percentile}
         />
       )}

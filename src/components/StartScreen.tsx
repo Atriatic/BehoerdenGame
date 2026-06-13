@@ -1,33 +1,36 @@
-
 import { motion } from 'framer-motion';
+import type { GameMode } from '../hooks/useGame';
+import { getDailyState } from '../lib/seeded-rng';
+import { hasDailyBeenPlayed, getDailyHighScore } from '../lib/daily';
 
 interface Props {
-  onStart: () => void;
+  onStart: (mode: GameMode) => void;
 }
 
 const floatingItems = ['📋', '📂', '🖊️', '📎', '🗂️', '📬'];
 
 export default function StartScreen({ onStart }: Props) {
+  const { day, dateStr } = getDailyState();
+  const alreadyPlayed = hasDailyBeenPlayed();
+  const dailyHighScore = getDailyHighScore();
+
   return (
     <div className="relative w-full h-dvh bg-petrol flex flex-col items-center justify-center overflow-hidden">
-      {/* Floating document icons */}
+      {/* Schwebende Dokument-Icons */}
       {floatingItems.map((icon, i) => (
         <motion.div
           key={i}
           className="absolute text-2xl pointer-events-none"
           initial={{
-            x: Math.random() * window.innerWidth,
-            y: window.innerHeight + 40,
+            x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 400),
+            y: (typeof window !== 'undefined' ? window.innerHeight : 800) + 40,
             rotate: Math.random() * 40 - 20,
-            opacity: 0.15,
+            opacity: 0.12,
           }}
-          animate={{
-            y: -60,
-            rotate: Math.random() * 60 - 30,
-          }}
+          animate={{ y: -60, rotate: Math.random() * 60 - 30 }}
           transition={{
-            duration: 6 + Math.random() * 6,
-            delay: i * 0.8,
+            duration: 7 + Math.random() * 6,
+            delay: i * 0.9,
             repeat: Infinity,
             repeatDelay: Math.random() * 4,
             ease: 'linear',
@@ -37,84 +40,104 @@ export default function StartScreen({ onStart }: Props) {
         </motion.div>
       ))}
 
-      {/* Content */}
       <motion.div
-        className="relative z-10 text-center px-8 max-w-sm"
+        className="relative z-10 text-center px-6 max-w-sm w-full"
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        {/* Logo / seal */}
+        {/* Siegel */}
         <motion.div
-          className="mx-auto mb-6 w-24 h-24 rounded-full border-4 border-coral flex items-center justify-center"
+          className="mx-auto mb-5 w-20 h-20 rounded-full border-4 border-coral flex items-center justify-center"
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.2, type: 'spring', stiffness: 200, damping: 15 }}
         >
-          <span className="text-4xl">🏛️</span>
+          <span className="text-3xl">🏛️</span>
         </motion.div>
 
-        {/* Title */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          <p className="text-coral text-xs font-bold tracking-[0.3em] uppercase mb-2">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+          <p className="text-coral text-xs font-bold tracking-[0.3em] uppercase mb-1">
             AmtlichGut. präsentiert
           </p>
-          <h1 className="text-white font-serif text-4xl font-black leading-tight mb-1">
-            Amt
+          <h1 className="text-white font-serif text-4xl font-black leading-tight">
+            Amt Musterhausen
           </h1>
-          <h1 className="text-white font-serif text-4xl font-black leading-tight mb-4">
-            Musterhausen
-          </h1>
-          <p className="text-white/60 text-sm mb-8">Das Behörden-Planspiel</p>
+          <p className="text-white/50 text-sm mt-1 mb-6">Das Behörden-Planspiel</p>
         </motion.div>
 
-        {/* Instructions */}
+        {/* Modus-Auswahl */}
         <motion.div
-          className="bg-white/10 rounded-xl px-5 py-4 mb-8 text-left"
+          className="space-y-3"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.45 }}
         >
-          <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-3">
-            So geht's:
-          </p>
-          <ul className="space-y-2 text-white/70 text-sm">
-            <li className="flex items-start gap-2">
-              <span className="text-coral font-bold">←</span>
-              <span>Nach links wischen = Ablehnen</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-emerald-400 font-bold">→</span>
-              <span>Nach rechts wischen = Genehmigen</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span>⚠️</span>
-              <span>
-                Halte alle 4 Ressourcen zwischen 0 und 100 — zu viel ist genauso schlimm wie
-                zu wenig.
+          {/* Akte des Tages */}
+          <button
+            onClick={() => onStart('daily')}
+            className="w-full bg-coral hover:bg-coral-light text-white rounded-2xl p-4 text-left transition-colors shadow-lg group relative overflow-hidden"
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-bold tracking-widest uppercase opacity-80">
+                📅 Akte des Tages
               </span>
+              <span className="bg-white/20 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                #{day}
+              </span>
+            </div>
+            <div className="font-serif font-bold text-lg leading-tight">
+              {dateStr} · Gleiche Karten für alle
+            </div>
+            {alreadyPlayed && dailyHighScore !== null && (
+              <div className="mt-2 text-xs opacity-80 font-medium">
+                ✅ Heute gespielt · Bestes Ergebnis: {dailyHighScore} Akten
+              </div>
+            )}
+            {!alreadyPlayed && (
+              <div className="mt-2 text-xs opacity-70">Vergleich mit allen anderen möglich →</div>
+            )}
+          </button>
+
+          {/* Freies Spiel */}
+          <button
+            onClick={() => onStart('endless')}
+            className="w-full bg-white/10 hover:bg-white/20 text-white rounded-2xl p-4 text-left transition-colors border border-white/20"
+          >
+            <div className="text-xs font-bold tracking-widest uppercase opacity-60 mb-1">
+              🎲 Freies Spiel
+            </div>
+            <div className="font-semibold text-base leading-tight">
+              Zufällige Karten · Endlos
+            </div>
+            <div className="text-xs opacity-50 mt-1">Kein Score-Vergleich</div>
+          </button>
+        </motion.div>
+
+        {/* Kurzanleitung */}
+        <motion.div
+          className="mt-5 bg-white/5 rounded-xl px-4 py-3 text-left"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+        >
+          <ul className="space-y-1.5 text-white/60 text-xs">
+            <li className="flex gap-2">
+              <span className="text-red-400 font-bold shrink-0">←</span>
+              <span>Ablehnen — Karte nach links wischen</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-emerald-400 font-bold shrink-0">→</span>
+              <span>Genehmigen — Karte nach rechts wischen</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="shrink-0">⚠️</span>
+              <span>Zu viel ist genauso schlimm wie zu wenig</span>
             </li>
           </ul>
         </motion.div>
 
-        {/* CTA */}
-        <motion.button
-          onClick={onStart}
-          className="w-full bg-coral hover:bg-coral-light text-white font-bold text-lg py-4 px-8 rounded-2xl shadow-xl transition-colors"
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.7 }}
-        >
-          Dienst antreten →
-        </motion.button>
-
-        <p className="text-white/30 text-xs mt-4">Kein Login erforderlich · Sofort spielbar</p>
+        <p className="text-white/20 text-xs mt-4">Kein Login · Sofort spielbar</p>
       </motion.div>
     </div>
   );

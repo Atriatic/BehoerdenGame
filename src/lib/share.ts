@@ -1,10 +1,16 @@
 import type { GameOverCause } from '../types';
 import { GAME_OVER_MESSAGES } from '../config/game-config';
 
+interface DailyInfo {
+  day: number;
+  dateStr: string;
+}
+
 export async function generateShareCard(
   score: number,
   cause: GameOverCause,
-  percentile: number
+  percentile: number,
+  daily?: DailyInfo
 ): Promise<Blob> {
   const canvas = document.createElement('canvas');
   canvas.width = 1080;
@@ -25,6 +31,13 @@ export async function generateShareCard(
   ctx.textAlign = 'center';
   ctx.letterSpacing = '6px';
   ctx.fillText('AMT MUSTERHAUSEN', 540, 140);
+
+  // Daily badge in header
+  if (daily) {
+    ctx.font = 'bold 28px sans-serif';
+    ctx.fillStyle = '#F26C4F';
+    ctx.fillText(`📅 Akte des Tages #${daily.day} · ${daily.dateStr}`, 540, 185);
+  }
 
   ctx.font = '32px serif';
   ctx.fillStyle = '#F26C4F';
@@ -210,14 +223,19 @@ export async function generateShareCard(
 export async function shareResult(
   score: number,
   cause: GameOverCause,
-  percentile: number
+  percentile: number,
+  daily?: DailyInfo
 ): Promise<void> {
-  const blob = await generateShareCard(score, cause, percentile);
+  const blob = await generateShareCard(score, cause, percentile, daily);
   const file = new File([blob], 'amt-musterhausen.png', { type: 'image/png' });
+
+  const text = daily
+    ? `Akte des Tages #${daily.day}: Ich habe ${score} Akten überlebt! Schaffst du mehr? 🏛️`
+    : `Ich habe ${score} Akten überlebt! Schaffst du mehr? 🏛️`;
 
   const shareData: ShareData = {
     title: 'Amt Musterhausen',
-    text: `Ich habe ${score} Akten überlebt! Schaffst du mehr? 🏛️`,
+    text,
     url: 'https://amtlichgut.de/amt',
   };
 

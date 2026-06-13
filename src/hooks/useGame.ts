@@ -2,9 +2,12 @@ import { useState, useCallback, useRef } from 'react';
 import type { Resources, GameState, GameOverCause, Card, ResourceKey } from '../types';
 import { GAME_CONFIG } from '../config/game-config';
 import { CARDS } from '../data/cards';
+import { getDailyDeck, markDailyPlayed, saveDailyScore } from '../lib/daily';
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
+export type GameMode = 'endless' | 'daily';
+
+function clamp(v: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, v));
 }
 
 function checkGameOver(resources: Resources): GameOverCause | null {
@@ -24,21 +27,30 @@ function getEscalationMultiplier(score: number): number {
 function applyEffect(
   resources: Resources,
   effects: { budget: number; zufriedenheit: number; personal: number; effizienz: number },
-  multiplier: number,
-  drift: number
+  multiplier: number
 ): Resources {
   return {
     budget: clamp(Math.round(resources.budget + effects.budget * multiplier), 0, 100),
-    zufriedenheit: clamp(Math.round(resources.zufriedenheit + effects.zufriedenheit * multiplier), 0, 100),
+    zufriedenheit: clamp(
+      Math.round(resources.zufriedenheit + effects.zufriedenheit * multiplier),
+      0,
+      100
+    ),
     personal: clamp(Math.round(resources.personal + effects.personal * multiplier), 0, 100),
-    effizienz: clamp(Math.round(resources.effizienz + effects.effizienz * multiplier - drift), 0, 100),
+    // Drift wird direkt auf Effizienz-Effekt aufaddiert
+    effizienz: clamp(
+      Math.round(
+        resources.effizienz + effects.effizienz * multiplier - GAME_CONFIG.DRIFT_PER_CARD
+      ),
+      0,
+      100
+    ),
   };
 }
 
-function buildDeck(): Card[] {
+function buildEndlessDeck(): Card[] {
   const tutorial = CARDS.filter((c) => c.isTutorial);
   const rest = CARDS.filter((c) => !c.isTutorial && !c.isChainCard);
-  // Shuffle rest
   for (let i = rest.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [rest[i], rest[j]] = [rest[j], rest[i]];
@@ -53,6 +65,7 @@ export function useGame() {
   const [cause, setCause] = useState<GameOverCause | null>(null);
   const [currentCard, setCurrentCard] = useState<Card | null>(null);
   const [isSwiping, setIsSwiping] = useState(false);
+  const [mode, setMode] = useState<GameMode>('endless');
 
   const deckRef = useRef<Card[]>([]);
   const recentIdsRef = useRef<string[]>([]);
@@ -66,18 +79,16 @@ export function useGame() {
     const recent = recentIdsRef.current;
     const unlocked = unlockedCardIdsRef.current;
 
-    // Add any unlocked chain cards into the deck if not already there
+    // Freigeschaltete Ketten-Karten ins Deck einfügen
     for (const id of unlocked) {
       const chainCard = CARDS.find((c) => c.id === id);
       if (chainCard && !deck.some((c) => c.id === id)) {
-        // Insert at a random position in the remaining deck (not position 0)
         const insertAt = Math.max(1, Math.floor(Math.random() * Math.min(5, deck.length)));
         deck.splice(insertAt, 0, chainCard);
       }
     }
     unlockedCardIdsRef.current = [];
 
-    // Try to find a card not in recent window
     const available = deck.filter(
       (c) => !recent.includes(c.id) || deck.length <= GAME_CONFIG.NO_REPEAT_WINDOW
     );
@@ -92,7 +103,7 @@ export function useGame() {
     }
 
     if (!card) {
-      // Rebuild deck (excluding chain cards, tutorials already done)
+      // Deck neu bauen (ohne Tutorial & Ketten)
       const newDeck = CARDS.filter((c) => !c.isTutorial && !c.isChainCard);
       for (let i = newDeck.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -109,8 +120,10 @@ export function useGame() {
     }
   }, []);
 
-  const startGame = useCallback(() => {
-    const deck = buildDeck();
+  const startGame = useCallback((selectedMode: GameMode = 'endless') => {
+    const deck =
+      selectedMode === 'daily' ? getDailyDeck() : buildEndlessDeck();
+
     deckRef.current = deck;
     recentIdsRef.current = [];
     unlockedCardIdsRef.current = [];
@@ -123,9 +136,9 @@ export function useGame() {
     setScore(0);
     setCause(null);
     setIsSwiping(false);
+    setMode(selectedMode);
     setGameState('playing');
 
-    // Draw first card
     const first = deck[0];
     deckRef.current = deck.slice(1);
     recentIdsRef.current = [first.id];
@@ -139,7 +152,6 @@ export function useGame() {
 
       const option = direction === 'left' ? currentCard.leftOption : currentCard.rightOption;
 
-      // Unlock chain cards
       if (option.unlocksCard) {
         unlockedCardIdsRef.current = [...unlockedCardIdsRef.current, option.unlocksCard];
       }
@@ -147,12 +159,7 @@ export function useGame() {
       const newScore = scoreRef.current + 1;
       scoreRef.current = newScore;
       const multiplier = getEscalationMultiplier(newScore);
-      const newResources = applyEffect(
-        resourcesRef.current,
-        option.effects,
-        multiplier,
-        GAME_CONFIG.DRIFT_PER_CARD
-      );
+      const newResources = applyEffect(resourcesRef.current, option.effects, multiplier);
       resourcesRef.current = newResources;
 
       setScore(newScore);
@@ -164,6 +171,12 @@ export function useGame() {
         setCurrentCard(null);
         setGameState('game_over');
         setIsSwiping(false);
+
+        // Daily-Modus: Score speichern & als gespielt markieren
+        if (mode === 'daily') {
+          saveDailyScore(newScore);
+          markDailyPlayed();
+        }
         return;
       }
 
@@ -172,7 +185,7 @@ export function useGame() {
         drawCard();
       }, 400);
     },
-    [currentCard, isSwiping, drawCard]
+    [currentCard, isSwiping, drawCard, mode]
   );
 
   const resetGame = useCallback(() => {
@@ -181,9 +194,10 @@ export function useGame() {
     setCause(null);
   }, []);
 
-  const getDurationSeconds = useCallback(() => {
-    return Math.round((Date.now() - startTimeRef.current) / 1000);
-  }, []);
+  const getDurationSeconds = useCallback(
+    () => Math.round((Date.now() - startTimeRef.current) / 1000),
+    []
+  );
 
   return {
     resources,
@@ -192,6 +206,7 @@ export function useGame() {
     cause,
     currentCard,
     isSwiping,
+    mode,
     startGame,
     handleSwipe,
     resetGame,

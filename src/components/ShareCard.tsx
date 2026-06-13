@@ -1,25 +1,30 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { GameOverCause } from '../types';
+import type { GameMode } from '../hooks/useGame';
 import { shareResult, generateShareCard } from '../lib/share';
 import { GAME_OVER_MESSAGES } from '../config/game-config';
+import { getDailyState } from '../lib/seeded-rng';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   score: number;
   cause: GameOverCause;
+  mode: GameMode;
   percentile: number;
 }
 
-export default function ShareCard({ isOpen, onClose, score, cause, percentile }: Props) {
+export default function ShareCard({ isOpen, onClose, score, cause, mode, percentile }: Props) {
   const [loading, setLoading] = useState(false);
   const msg = GAME_OVER_MESSAGES[cause];
+  const { day, dateStr } = getDailyState();
+  const isDaily = mode === 'daily';
 
   const handleShare = async () => {
     setLoading(true);
     try {
-      await shareResult(score, cause, percentile);
+      await shareResult(score, cause, percentile, isDaily ? { day, dateStr } : undefined);
     } finally {
       setLoading(false);
     }
@@ -28,11 +33,16 @@ export default function ShareCard({ isOpen, onClose, score, cause, percentile }:
   const handleDownload = async () => {
     setLoading(true);
     try {
-      const blob = await generateShareCard(score, cause, percentile);
+      const blob = await generateShareCard(
+        score,
+        cause,
+        percentile,
+        isDaily ? { day, dateStr } : undefined
+      );
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `amt-musterhausen-${score}-akten.png`;
+      a.download = `amt-musterhausen-${isDaily ? `tag-${day}` : 'freies-spiel'}-${score}-akten.png`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -61,7 +71,12 @@ export default function ShareCard({ isOpen, onClose, score, cause, percentile }:
             transition={{ type: 'spring', stiffness: 250, damping: 25 }}
           >
             <div className="bg-petrol px-5 py-4 flex items-center justify-between">
-              <h2 className="text-white font-serif font-bold text-xl">📤 Ergebnis teilen</h2>
+              <div>
+                <h2 className="text-white font-serif font-bold text-xl">📤 Ergebnis teilen</h2>
+                {isDaily && (
+                  <p className="text-coral text-xs font-bold mt-0.5">Akte des Tages #{day}</p>
+                )}
+              </div>
               <button
                 onClick={onClose}
                 className="w-8 h-8 flex items-center justify-center text-white/60 hover:text-white bg-white/10 rounded-full text-sm"
@@ -70,10 +85,15 @@ export default function ShareCard({ isOpen, onClose, score, cause, percentile }:
               </button>
             </div>
 
-            {/* Preview card */}
+            {/* Vorschau */}
             <div className="mx-5 my-4 bg-white rounded-xl border border-cream-dark p-4 text-center shadow-sm">
+              {isDaily && (
+                <p className="text-coral text-xs font-bold tracking-widest uppercase mb-1">
+                  Akte des Tages #{day} · {dateStr}
+                </p>
+              )}
               <p className="text-petrol/40 text-xs uppercase tracking-wider mb-1 font-bold">
-                Amt Musterhausen · Dienstzeugnis
+                {!isDaily && 'Amt Musterhausen · Dienstzeugnis'}
               </p>
               <div className="text-4xl font-serif font-black text-coral my-2">{score}</div>
               <p className="text-petrol font-semibold text-sm">Akten überlebt</p>
@@ -91,11 +111,7 @@ export default function ShareCard({ isOpen, onClose, score, cause, percentile }:
                 disabled={loading}
                 className="w-full bg-coral hover:bg-coral-light disabled:opacity-50 text-white font-bold py-3.5 rounded-xl transition-colors text-sm shadow-md flex items-center justify-center gap-2"
               >
-                {loading ? (
-                  <span className="animate-spin">⏳</span>
-                ) : (
-                  <>📱 Als Story teilen</>
-                )}
+                {loading ? <span className="animate-spin">⏳</span> : <>📱 Als Story teilen</>}
               </button>
               <button
                 onClick={handleDownload}
