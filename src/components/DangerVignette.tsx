@@ -31,7 +31,7 @@ export default function DangerVignette({ resources }: Props) {
       {isActive && (
         <motion.div
           key="vignette"
-          className="absolute inset-0 z-5 pointer-events-none"
+          className="absolute inset-0 z-[5] pointer-events-none"
           initial={{ opacity: 0 }}
           animate={{ opacity: [0.4, 0.9, 0.4] }}
           exit={{ opacity: 0 }}

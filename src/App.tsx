@@ -11,6 +11,7 @@ import Leaderboard from './components/Leaderboard';
 import ShareCard from './components/ShareCard';
 import DangerVignette from './components/DangerVignette';
 import MilestoneToast from './components/MilestoneToast';
+import SwipeTutorial from './components/SwipeTutorial';
 import { getPercentile } from './lib/supabase';
 import { getDailyState } from './lib/seeded-rng';
 import { GAME_CONFIG } from './config/game-config';
@@ -90,6 +91,9 @@ export default function App() {
 
       {/* Meilenstein-Toasts */}
       {game.gameState === 'playing' && <MilestoneToast score={game.score} />}
+
+      {/* First-Play Tutorial (einmalig) */}
+      {game.gameState === 'playing' && <SwipeTutorial />}
 
       {/* Karten-Stapel */}
       {game.gameState === 'playing' && game.currentCard && (

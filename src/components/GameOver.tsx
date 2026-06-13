@@ -1,4 +1,5 @@
-import { motion } from 'framer-motion';
+import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import { useEffect } from 'react';
 import type { GameOverCause } from '../types';
 import type { GameMode } from '../hooks/useGame';
 import { GAME_OVER_MESSAGES, RESOURCE_ICONS } from '../config/game-config';
@@ -34,6 +35,22 @@ function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return m > 0 ? `${m}:${String(s).padStart(2, '0')} min` : `${s} Sek.`;
+}
+
+function AnimatedScore({ target }: { target: number }) {
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (v) => Math.round(v));
+
+  useEffect(() => {
+    const controls = animate(count, target, { duration: 1.2, ease: 'easeOut', delay: 0.4 });
+    return controls.stop;
+  }, [count, target]);
+
+  return (
+    <motion.span className="text-6xl font-serif font-black text-coral leading-none tabular-nums">
+      {rounded}
+    </motion.span>
+  );
 }
 
 export default function GameOver({
@@ -90,7 +107,7 @@ export default function GameOver({
           </p>
 
           <div className="mb-4">
-            <div className="text-6xl font-serif font-black text-coral leading-none">{score}</div>
+            <AnimatedScore target={score} />
             <div className="text-petrol font-semibold text-lg">Akten überlebt</div>
           </div>
 
