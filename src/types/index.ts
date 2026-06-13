@@ -20,7 +20,7 @@ export type CharacterName = 'Klaus' | 'Müller' | 'Bürgermeister';
 export interface CardOption {
   label: string;
   effects: CardEffect;
-  unlocksCard?: string; // id of card to add to deck
+  unlocksCard?: string;
 }
 
 export interface Card {
@@ -31,7 +31,7 @@ export interface Card {
   rightOption: CardOption;
   category: CardCategory;
   character?: CharacterName;
-  isChainCard?: boolean; // only enters deck when unlocked
+  isChainCard?: boolean;
   isTutorial?: boolean;
 }
 
@@ -54,5 +54,5 @@ export interface LeaderboardEntry {
 
 export interface HintDot {
   resource: ResourceKey;
-  size: 'small' | 'large'; // small = 1-7, large = 8+
+  size: 'small' | 'large';
 }

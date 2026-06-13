@@ -11,8 +11,8 @@ export const GAME_CONFIG = {
   MIN_RESOURCE: 0,
   WARNING_THRESHOLD_LOW: 20,
   WARNING_THRESHOLD_HIGH: 80,
-  DRAG_DECISION_THRESHOLD: 100, // px
-  HINT_SHOW_THRESHOLD: 40, // px drag before hints show
+  DRAG_DECISION_THRESHOLD: 100,
+  HINT_SHOW_THRESHOLD: 40,
 } as const;
 
 export const RESOURCE_LABELS: Record<string, string> = {
