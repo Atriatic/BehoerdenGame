@@ -73,6 +73,7 @@ export function useGame() {
   const startTimeRef = useRef<number>(Date.now());
   const scoreRef = useRef(0);
   const resourcesRef = useRef<Resources>({ ...GAME_CONFIG.INITIAL_RESOURCES });
+  const modeRef = useRef<GameMode>('endless');
 
   const drawCard = useCallback(() => {
     const deck = deckRef.current;
@@ -137,6 +138,7 @@ export function useGame() {
     setCause(null);
     setIsSwiping(false);
     setMode(selectedMode);
+    modeRef.current = selectedMode;
     setGameState('playing');
 
     const first = deck[0];
@@ -173,7 +175,7 @@ export function useGame() {
         setIsSwiping(false);
 
         // Daily-Modus: Score speichern & als gespielt markieren
-        if (mode === 'daily') {
+        if (modeRef.current === 'daily') {
           saveDailyScore(newScore);
           markDailyPlayed();
         }
@@ -185,7 +187,7 @@ export function useGame() {
         drawCard();
       }, 400);
     },
-    [currentCard, isSwiping, drawCard, mode]
+    [currentCard, isSwiping, drawCard]
   );
 
   const resetGame = useCallback(() => {

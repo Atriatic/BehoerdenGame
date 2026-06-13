@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import type { Card, ResourceKey } from '../types';
 import { GAME_CONFIG, RESOURCE_ICONS } from '../config/game-config';
@@ -67,6 +67,19 @@ export default function CardStack({ card, onSwipe, isAnimating }: Props) {
     },
     [triggerSwipe, x]
   );
+
+  // Keyboard navigation (←/→ Pfeile oder A/D)
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+        triggerSwipe('left');
+      } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+        triggerSwipe('right');
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [triggerSwipe]);
 
   const hintDirection =
     Math.abs(dragX) > GAME_CONFIG.HINT_SHOW_THRESHOLD
