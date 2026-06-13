@@ -8,6 +8,7 @@ interface Props {
   score: number;
   cause: GameOverCause;
   mode: GameMode;
+  durationSeconds: number;
   onReset: () => void;
   onShare: () => void;
   onLeaderboard: () => void;
@@ -29,10 +30,17 @@ function getCauseLabel(cause: GameOverCause): string {
   return isZero ? 'Aktenkollaps' : 'Übertriebene Effizienz';
 }
 
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m > 0 ? `${m}:${String(s).padStart(2, '0')} min` : `${s} Sek.`;
+}
+
 export default function GameOver({
   score,
   cause,
   mode,
+  durationSeconds,
   onReset,
   onShare,
   onLeaderboard,
@@ -99,8 +107,15 @@ export default function GameOver({
             <p className="text-petrol/70 text-sm leading-relaxed">{msg.text}</p>
           </div>
 
-          <div className="bg-petrol/5 rounded-lg py-2 px-4 mb-4 text-sm text-petrol/60">
-            Besser als <span className="font-bold text-petrol">{percentile}%</span> aller Amtsleiter
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className="bg-petrol/5 rounded-lg py-2 px-3 text-center">
+              <div className="text-petrol/50 text-xs mb-0.5">Dienstzeit</div>
+              <div className="text-petrol font-bold text-sm">{formatDuration(durationSeconds)}</div>
+            </div>
+            <div className="bg-petrol/5 rounded-lg py-2 px-3 text-center">
+              <div className="text-petrol/50 text-xs mb-0.5">Besser als</div>
+              <div className="text-petrol font-bold text-sm">{percentile}% aller</div>
+            </div>
           </div>
 
           {/* Stempel-Wasserzeichen */}

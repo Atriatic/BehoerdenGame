@@ -104,8 +104,12 @@ export default function CardStack({ card, onSwipe, isAnimating }: Props) {
 
       {/* Main card */}
       <motion.div
+        key={card.id}
         className="absolute no-select pointer-events-auto"
         style={{ x, rotate, zIndex: 10, width: 320, touchAction: 'none' }}
+        initial={{ y: 30, opacity: 0, scale: 0.95 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 280, damping: 22 }}
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.8}

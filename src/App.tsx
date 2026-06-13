@@ -9,18 +9,16 @@ import GameOver from './components/GameOver';
 import SoundToggle from './components/SoundToggle';
 import Leaderboard from './components/Leaderboard';
 import ShareCard from './components/ShareCard';
+import DangerVignette from './components/DangerVignette';
+import MilestoneToast from './components/MilestoneToast';
 import { getPercentile } from './lib/supabase';
 import { getDailyState } from './lib/seeded-rng';
 import { GAME_CONFIG } from './config/game-config';
 
-function getEscalationLevel(score: number): number {
-  return Math.floor(score / GAME_CONFIG.ESCALATION_INTERVAL);
-}
-
 function getEscalationMultiplier(score: number): number {
+  const level = Math.floor(score / GAME_CONFIG.ESCALATION_INTERVAL);
   return (
-    GAME_CONFIG.ESCALATION_MULTIPLIER_BASE +
-    getEscalationLevel(score) * GAME_CONFIG.ESCALATION_MULTIPLIER_STEP
+    GAME_CONFIG.ESCALATION_MULTIPLIER_BASE + level * GAME_CONFIG.ESCALATION_MULTIPLIER_STEP
   );
 }
 
@@ -31,9 +29,7 @@ export default function App() {
   const [percentile, setPercentile] = useState(50);
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
 
-  const handleStart = (mode: GameMode) => {
-    game.startGame(mode);
-  };
+  const handleStart = (mode: GameMode) => game.startGame(mode);
 
   const handleShowShare = async () => {
     const pct = await getPercentile(game.score);
@@ -42,9 +38,8 @@ export default function App() {
   };
 
   const { day } = getDailyState();
-  const escalationLevel = getEscalationLevel(game.score);
+  const escalationLevel = Math.floor(game.score / GAME_CONFIG.ESCALATION_INTERVAL);
   const escalationMultiplier = getEscalationMultiplier(game.score);
-  const showEscalationBadge = escalationLevel > 0;
 
   if (game.gameState === 'start') {
     return <StartScreen onStart={handleStart} />;
@@ -52,14 +47,18 @@ export default function App() {
 
   return (
     <div className="relative w-full h-dvh overflow-hidden bg-petrol">
+      {/* Hintergrund */}
       <CityView resources={game.resources} />
 
+      {/* Gefahr-Vignette */}
+      {game.gameState === 'playing' && <DangerVignette resources={game.resources} />}
+
+      {/* Ressourcen-Balken */}
       <ResourceBar resources={game.resources} />
 
-      {/* HUD-Leiste */}
+      {/* HUD */}
       {game.gameState === 'playing' && (
         <div className="absolute top-[52px] left-0 right-0 z-20 flex items-center justify-between px-3">
-          {/* Quit-Button */}
           <button
             onClick={() => setShowQuitConfirm(true)}
             className="bg-black/25 hover:bg-black/40 backdrop-blur-sm rounded-full w-8 h-8 flex items-center justify-center text-white/60 hover:text-white text-sm transition-colors"
@@ -68,7 +67,6 @@ export default function App() {
             ✕
           </button>
 
-          {/* Akte-Zähler + Modus */}
           <div className="flex items-center gap-2">
             <div className="bg-black/30 backdrop-blur-sm rounded-full px-3 py-1 text-white/80 text-xs font-medium">
               Akte #{game.score + 1}
@@ -80,25 +78,18 @@ export default function App() {
             )}
           </div>
 
-          {/* Eskalations-Badge */}
-          {showEscalationBadge ? (
+          {escalationLevel > 0 ? (
             <div className="bg-orange-500/80 backdrop-blur-sm rounded-full px-2 py-1 text-white text-xs font-bold">
               ×{escalationMultiplier.toFixed(1)}
             </div>
           ) : (
-            <div className="w-8" /> /* Platzhalter für Symmetrie */
+            <div className="w-8" />
           )}
         </div>
       )}
 
-      {/* Keyboard-Hint (Desktop only) */}
-      {game.gameState === 'playing' && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 hidden md:flex items-center gap-3 bg-black/20 backdrop-blur-sm rounded-full px-4 py-2 text-white/40 text-xs">
-          <span>← / A = Ablehnen</span>
-          <span className="text-white/20">·</span>
-          <span>→ / D = Genehmigen</span>
-        </div>
-      )}
+      {/* Meilenstein-Toasts */}
+      {game.gameState === 'playing' && <MilestoneToast score={game.score} />}
 
       {/* Karten-Stapel */}
       {game.gameState === 'playing' && game.currentCard && (
@@ -109,12 +100,22 @@ export default function App() {
         />
       )}
 
-      {/* Game-Over-Screen */}
+      {/* Keyboard-Hint (nur Desktop) */}
+      {game.gameState === 'playing' && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 hidden md:flex items-center gap-3 bg-black/20 backdrop-blur-sm rounded-full px-4 py-2 text-white/40 text-xs pointer-events-none">
+          <span>← / A = Ablehnen</span>
+          <span className="text-white/20">·</span>
+          <span>→ / D = Genehmigen</span>
+        </div>
+      )}
+
+      {/* Game-Over */}
       {game.gameState === 'game_over' && game.cause && (
         <GameOver
           score={game.score}
           cause={game.cause}
           mode={game.mode}
+          durationSeconds={game.getDurationSeconds()}
           onReset={game.resetGame}
           onShare={handleShowShare}
           onLeaderboard={() => setShowLeaderboard(true)}
@@ -124,7 +125,7 @@ export default function App() {
 
       <SoundToggle />
 
-      {/* Quit-Bestätigung */}
+      {/* Quit-Dialog */}
       {showQuitConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
           <div className="bg-cream rounded-2xl p-6 max-w-xs w-full text-center shadow-2xl">
@@ -140,10 +141,7 @@ export default function App() {
                 Weitermachen
               </button>
               <button
-                onClick={() => {
-                  setShowQuitConfirm(false);
-                  game.resetGame();
-                }}
+                onClick={() => { setShowQuitConfirm(false); game.resetGame(); }}
                 className="flex-1 bg-coral hover:bg-coral-light text-white font-bold py-3 rounded-xl text-sm transition-colors"
               >
                 Aufgeben
